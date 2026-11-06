@@ -7,7 +7,7 @@ import { BookingsModule } from './bookings/bookings.module.js';
 import { ReviewsModule } from './reviews/reviews.module.js';
 
 @Module({
-  imports: [PrismaModule, PlacesModule, BookingsModule, ReviewsModule],
+  imports: [PrismaModule, PlacesModule, BookingsModule, ReviewsModule ],
   controllers: [AppController],
   providers: [AppService],
 })
