@@ -5,7 +5,7 @@ import { PrismaService } from '../prisma/prisma.service.js';
 export class ReviewsService {
   constructor(private readonly prisma: PrismaService) {}
 
-
+//  Reviewing again updates the old one-
   async createOrUpdateReview(placeId: number, userId: number, rating: number, body: string) {
     if (rating < 1 || rating > 5) {
       throw new BadRequestException('Rating must be an integer between 1 and 5 stars');
@@ -29,7 +29,7 @@ export class ReviewsService {
     });
   }
 
-
+ 
   async findByPlace(placeId?: number) {
     return this.prisma.review.findMany({
       where: placeId ? { placeId } : {},
