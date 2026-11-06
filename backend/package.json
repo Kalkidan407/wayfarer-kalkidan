@@ -48,5 +48,6 @@
     "typescript": "^6.0.3",
     "vite-tsconfig-paths": "^5.1.4",
     "vitest": "^4.1.2"
-  }
+  },
+  "seed": "node --load ts-node/esm prisma/seed.ts"
 }
