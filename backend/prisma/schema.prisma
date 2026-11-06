@@ -1,0 +1,60 @@
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id       Int       @id @default(autoincrement())
+  name     String
+  reviews  Review[]
+  bookings Booking[]
+}
+
+model Place {
+  id           Int        @id @default(autoincrement())
+  name         String
+  category     String
+  description  String
+  openingHours String
+  reviews      Review[]
+  tourSlots    TourSlot[]
+}
+
+model Review {
+  id        Int      @id @default(autoincrement())
+  placeId   Int
+  userId    Int
+  rating    Int
+  body      String
+  createdAt DateTime @default(now())
+
+  place     Place    @relation(fields: [placeId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([placeId, userId])
+}
+
+model TourSlot {
+  id        Int       @id @default(autoincrement())
+  placeId   Int
+  startsAt  DateTime
+  capacity  Int
+  bookings  Booking[]
+
+  place     Place     @relation(fields: [placeId], references: [id], onDelete: Cascade)
+}
+
+model Booking {
+  id        Int      @id @default(autoincrement())
+  slotId    Int
+  userId    Int
+  seats     Int
+  createdAt DateTime @default(now())
+
+  slot      TourSlot @relation(fields: [slotId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
