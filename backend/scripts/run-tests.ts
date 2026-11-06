@@ -1,5 +1,6 @@
 import axios from 'axios';
 
+// I use chatGPT to generate this test
 async function runValidationSuite() {
   console.log('🧪 STARTING WAYFARER TESTING SUITE...\n');
 

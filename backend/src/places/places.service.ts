@@ -50,7 +50,7 @@ export class PlacesService {
       };
     });
 
-    // 4. Sort by the weighted score in descending order 
+    // Sort by the weighted score in descending order 
     return rankedPlaces.sort((a :any, b :any) => b.weightedScore - a.weightedScore);
   }
 
