@@ -25,7 +25,7 @@ export class PlacesService {
     const C = globalReviewCount > 0 ? globalTotalStars / globalReviewCount : 3.0;
 
     // m = Minimum review threshold. Places with fewer than 2 reviews get pulled heavily toward the city average
-    const m = 2; 
+    const m = 5; 
 
     //  Bayesian ranking formula
     const rankedPlaces = places.map((place: any) => {
@@ -50,7 +50,7 @@ export class PlacesService {
       };
     });
 
-    // 4. Sort by the weighted score in descending order 
+    // Sort by the weighted score in descending order 
     return rankedPlaces.sort((a :any, b :any) => b.weightedScore - a.weightedScore);
   }
 

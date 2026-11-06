@@ -1,52 +1,74 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service.js';
 
-
 @Injectable()
 export class BookingsService {
-
   constructor(private prisma: PrismaService) {}
 
   async createBooking(slotId: number, userId: number, seatsRequested: number) {
+    if (!Number.isInteger(slotId) || slotId <= 0) {
+      throw new BadRequestException('Invalid slotId');
+    }
 
-    // Execute the logic inside a strict serializable transaction to prevent race conditions
-    // to solve the second problem which is to prevent to  not allow users to pick the last remaining slot 
-    return this.prisma.$transaction(async (tx :any) => {
-      
-    
-      const slot = await tx.tourSlot.findUnique({
-        where: { id: slotId },
-        include: { bookings: true },
-      });
+    if (!Number.isInteger(userId) || userId <= 0) {
+      throw new BadRequestException('Invalid userId');
+    }
 
-      if (!slot) {
-        throw new BadRequestException('Tour slot not found');
-      }
+    if (!Number.isInteger(seatsRequested) || seatsRequested <= 0) {
+      throw new BadRequestException('Seats requested must be a positive integer');
+    }
 
-      // 2. Calculate how many seats have already been taken
-      const totalBookedSeats = slot.bookings.reduce((sum :number, b :any) => sum + b.seats, 0);
-      const seatsRemaining = slot.capacity - totalBookedSeats;
+    try {
+      return await this.prisma.$transaction(
+        async (tx: any) => {
+          const slot = await tx.tourSlot.findUnique({
+            where: { id: slotId },
+            include: { bookings: true },
+          });
 
-      // 3. Reject the request if there are not enough seats left
-      if (seatsRequested > seatsRemaining) {
-        throw new BadRequestException(`Not enough seats left. Only ${seatsRemaining} available.`);
-      }
+          if (!slot) {
+            throw new BadRequestException('Tour slot not found');
+          }
 
-     
-      const booking = await tx.booking.create({
-        data: {
-          slotId,
-          userId,
-          seats: seatsRequested,
+          const totalBookedSeats = slot.bookings.reduce((sum: number, booking: any) => sum + booking.seats, 0);
+          const seatsRemaining = slot.capacity - totalBookedSeats;
+
+          if (seatsRemaining <= 0 || seatsRequested > seatsRemaining) {
+            throw new BadRequestException('Tour slot is full. No seats left.');
+          }
+
+          const booking = await tx.booking.create({
+            data: {
+              slotId,
+              userId,
+              seats: seatsRequested,
+            },
+          });
+
+          return {
+            message: 'Booking confirmed successfully!',
+            booking,
+          };
         },
-      });
+        { isolationLevel: 'Serializable' },
+      );
+    } catch (error: any) {
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
 
-      return {
-        message: 'Booking confirmed successfully!',
-        booking,
-      };
-    }, {
-      isolationLevel: 'Serializable',
-    });
+      const isConcurrencyConflict =
+        error?.code === 'P2034' ||
+        error?.code === 'SQLITE_BUSY' ||
+        error?.message?.includes('database is locked') ||
+        error?.message?.includes('serialization') ||
+        error?.message?.includes('write conflict');
+
+      if (isConcurrencyConflict) {
+        throw new BadRequestException('Tour slot is full. No seats left.');
+      }
+
+      throw error;
+    }
   }
 }
