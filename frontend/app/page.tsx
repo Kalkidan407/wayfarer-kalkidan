@@ -2,10 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 
-type User = {
-  id: number;
-  name: string;
-};
+type User = { id: number; name: string };
 
 type Place = {
   id: number;
@@ -23,10 +20,20 @@ type Review = {
   rating: number;
   body: string;
   createdAt: string;
-  user: {
-    id: number;
-    name: string;
-  };
+  user: { id: number; name: string };
+};
+
+type SlotDto = {
+  id: number;
+  placeId: number;
+  startsAt: string;
+  capacity: number;
+  bookings: Array<{ id: number; userId: number; seats: number }>;
+};
+
+type SelectedPlaceDetails = Place & {
+  tourSlots: SlotDto[];
+  reviews: Review[];
 };
 
 const categoryOptions = ['all', 'History', 'Food', 'Nature'] as const;
@@ -37,11 +44,13 @@ export default function Home() {
   const [places, setPlaces] = useState<Place[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<(typeof categoryOptions)[number]>('all');
   const [selectedPlaceId, setSelectedPlaceId] = useState<number | null>(null);
+  const [selectedPlace, setSelectedPlace] = useState<SelectedPlaceDetails | null>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [newRating, setNewRating] = useState(0);
   const [newReview, setNewReview] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [bookingMessage, setBookingMessage] = useState<string | null>(null);
 
   const activeUser = useMemo(
     () => users.find((user) => user.id === selectedUserId) ?? users[0] ?? null,
@@ -55,7 +64,7 @@ export default function Home() {
         if (!res.ok) throw new Error('Unable to load users');
         const data = (await res.json()) as User[];
         setUsers(data);
-        if (data.length > 0) setSelectedUserId(data[0].id);
+        if (data.length > 0) setSelectedUserId((current) => current ?? data[0].id);
       } catch (err) {
         console.error(err);
         setError('Could not connect to the local backend. Start the Nest app on port 3000.');
@@ -95,11 +104,35 @@ export default function Home() {
     }
 
     loadPlaces();
-  }, [selectedCategory, users, selectedPlaceId]);
+  }, [selectedCategory, users]);
+
+  useEffect(() => {
+    async function loadSelectedPlace() {
+      if (!selectedPlaceId) {
+        setSelectedPlace(null);
+        return;
+      }
+
+      try {
+        const res = await fetch(`http://localhost:3000/places/${selectedPlaceId}`);
+        if (!res.ok) throw new Error('Unable to load selected place');
+        const data = (await res.json()) as SelectedPlaceDetails;
+        setSelectedPlace(data);
+      } catch (err) {
+        console.error(err);
+        setError('Unable to load the selected place details.');
+      }
+    }
+
+    loadSelectedPlace();
+  }, [selectedPlaceId]);
 
   useEffect(() => {
     async function loadReviews() {
-      if (!selectedPlaceId) return;
+      if (!selectedPlaceId) {
+        setReviews([]);
+        return;
+      }
 
       try {
         const res = await fetch(`http://localhost:3000/reviews?placeId=${selectedPlaceId}`);
@@ -114,13 +147,39 @@ export default function Home() {
     loadReviews();
   }, [selectedPlaceId]);
 
-  const selectedPlace = useMemo(
+  useEffect(() => {
+    if (!activeUser || !selectedPlaceId) {
+      setNewRating(0);
+      setNewReview('');
+      return;
+    }
+
+    const userReview = reviews.find((review) => review.user.id === activeUser.id);
+
+    if (userReview) {
+      setNewRating(userReview.rating);
+      setNewReview(userReview.body);
+    } else {
+      setNewRating(0);
+      setNewReview('');
+    }
+  }, [activeUser, selectedPlaceId, reviews]);
+
+  const selectedPlaceSummary = useMemo(
     () => places.find((place) => place.id === selectedPlaceId) ?? places[0] ?? null,
     [places, selectedPlaceId],
   );
 
+  const currentUserReview = useMemo(
+    () => reviews.find((review) => review.user.id === activeUser?.id) ?? null,
+    [activeUser, reviews],
+  );
+
+  const renderStars = (value: number) =>
+    Array.from({ length: 5 }, (_, index) => (index < value ? '★' : '☆')).join('');
+
   async function submitReview() {
-    if (!selectedPlace || !activeUser || !newRating || !newReview.trim()) return;
+    if (!selectedPlaceSummary || !activeUser || !newRating || !newReview.trim()) return;
 
     try {
       const response = await fetch('http://localhost:3000/reviews', {
@@ -130,30 +189,85 @@ export default function Home() {
           'X-User-Id': String(activeUser.id),
         },
         body: JSON.stringify({
-          placeId: selectedPlace.id,
+          placeId: selectedPlaceSummary.id,
           rating: newRating,
           body: newReview.trim(),
         }),
       });
 
       if (!response.ok) {
-        throw new Error('Review could not be saved');
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Review could not be saved');
       }
 
-      setNewRating(0);
-      setNewReview('');
+      setError(null);
+      setBookingMessage(null);
 
-      const reviewRes = await fetch(`http://localhost:3000/reviews?placeId=${selectedPlace.id}`);
+      const reviewRes = await fetch(`http://localhost:3000/reviews?placeId=${selectedPlaceSummary.id}`);
       const reviewData = (await reviewRes.json()) as Review[];
       setReviews(reviewData);
     } catch (err) {
       console.error(err);
-      setError('Unable to submit the review right now.');
+      setError(err instanceof Error ? err.message : 'Unable to submit the review right now.');
     }
   }
 
-  const renderStars = (value: number) =>
-    Array.from({ length: 5 }, (_, index) => (index < value ? '★' : '☆')).join('');
+  async function handleBooking(slotId: number) {
+    if (!activeUser) return;
+
+    try {
+      const response = await fetch('http://localhost:3000/bookings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-User-Id': String(activeUser.id),
+        },
+        body: JSON.stringify({
+          slotId,
+          seats: 1,
+        }),
+      });
+
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Booking failed');
+      }
+
+      setBookingMessage(`${data.message || 'Booking confirmed'} for ${activeUser.name}.`);
+      setError(null);
+
+      const updatedPlace = await fetch(`http://localhost:3000/places/${selectedPlaceId}`);
+      const updatedPlaceData = (await updatedPlace.json()) as SelectedPlaceDetails;
+      setSelectedPlace(updatedPlaceData);
+    } catch (err) {
+      console.error(err);
+      setBookingMessage(null);
+      setError(err instanceof Error ? err.message : 'Booking could not be completed.');
+    }
+  }
+
+  const slots = useMemo(() => {
+    if (!selectedPlace?.tourSlots) return [];
+
+    return selectedPlace.tourSlots.map((slot) => {
+      const bookedSeats = slot.bookings.reduce((sum, booking) => sum + booking.seats, 0);
+      const seatsRemaining = slot.capacity - bookedSeats;
+      const timeLabel = new Date(slot.startsAt).toLocaleTimeString([], {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+      });
+
+      return {
+        id: slot.id,
+        time: timeLabel,
+        seats: seatsRemaining > 0 ? `${seatsRemaining} of ${slot.capacity} seats left` : 'Fully booked',
+        isFull: seatsRemaining <= 0,
+        remainingSeats: seatsRemaining,
+      };
+    });
+  }, [selectedPlace]);
 
   return (
     <main className="wayfarer-page">
@@ -216,7 +330,7 @@ export default function Home() {
                   <button
                     key={place.id}
                     type="button"
-                    className={`place-item ${selectedPlace?.id === place.id ? 'selected' : ''}`}
+                    className={`place-item ${selectedPlaceSummary?.id === place.id ? 'selected' : ''}`}
                     onClick={() => setSelectedPlaceId(place.id)}
                   >
                     <div className="place-name">{place.name}</div>
@@ -231,40 +345,43 @@ export default function Home() {
 
           <div className="details-panel">
             {error ? <div className="empty-state error-state">{error}</div> : null}
+            {bookingMessage ? <div className="empty-state success-state">{bookingMessage}</div> : null}
 
-            {selectedPlace ? (
+            {selectedPlaceSummary ? (
               <>
                 <div className="detail-header">
                   <div>
-                    <h2>{selectedPlace.name}</h2>
+                    <h2>{selectedPlaceSummary.name}</h2>
                     <div className="detail-subtitle">
-                      {selectedPlace.category} · {selectedPlace.description}
+                      {selectedPlaceSummary.category} · {selectedPlaceSummary.description}
                     </div>
                   </div>
                   <div className="rating-pill">
-                    {renderStars(Math.round(selectedPlace.weightedScore))} {selectedPlace.weightedScore.toFixed(1)}
+                    {renderStars(Math.round(selectedPlaceSummary.weightedScore))} {selectedPlaceSummary.weightedScore.toFixed(1)}
                   </div>
                 </div>
 
                 <div className="slot-grid">
-                  {[
-                    { time: '09:00', seats: '4 of 10 seats left', booking: 'Book' },
-                    { time: '11:00', seats: '10 of 10 seats left', booking: 'Book' },
-                    { time: '14:00', seats: 'Fully booked', booking: 'Full' },
-                  ].map((slot) => (
-                    <div key={slot.time} className="slot-card">
-                      <div className="slot-info">
-                        <div className="slot-time">{slot.time}</div>
-                        <div className="slot-seats">{slot.seats}</div>
+                  {slots.length > 0 ? (
+                    slots.map((slot) => (
+                      <div key={slot.id} className="slot-card">
+                        <div className="slot-info">
+                          <div className="slot-time">{slot.time}</div>
+                          <div className="slot-seats">{slot.seats}</div>
+                        </div>
+                        <button
+                          type="button"
+                          className={`slot-button ${slot.isFull ? 'full' : 'available'}`}
+                          onClick={() => !slot.isFull && handleBooking(slot.id)}
+                          disabled={slot.isFull}
+                        >
+                          {slot.isFull ? 'Full' : 'Book'}
+                        </button>
                       </div>
-                      <button
-                        type="button"
-                        className={`slot-button ${slot.booking === 'Full' ? 'full' : 'available'}`}
-                      >
-                        {slot.booking}
-                      </button>
-                    </div>
-                  ))}
+                    ))
+                  ) : (
+                    <div className="empty-state">No tour slots available for this place.</div>
+                  )}
                 </div>
 
                 <div className="reviews-box">
@@ -286,7 +403,7 @@ export default function Home() {
 
                   <div className="review-form">
                     <div className="rating-label-row">
-                      <span>Your rating:</span>
+                      <span>{currentUserReview ? 'Edit your review:' : 'Your rating:'}</span>
                       <div className="star-row" aria-label="Star rating picker">
                         {[1, 2, 3, 4, 5].map((value) => (
                           <button
@@ -305,12 +422,12 @@ export default function Home() {
                     <textarea
                       value={newReview}
                       onChange={(event) => setNewReview(event.target.value)}
-                      placeholder="Write a short review..."
+                      placeholder={currentUserReview ? 'Update your review...' : 'Write a short review...'}
                     />
 
                     <div className="submit-row">
                       <button type="button" className="submit-button" onClick={submitReview}>
-                        Submit
+                        {currentUserReview ? 'Update review' : 'Submit'}
                       </button>
                     </div>
                   </div>

@@ -38,16 +38,19 @@ button, select, textarea {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 28px;
+  padding: 22px;
 }
 
 .wayfarer-card {
-  width: min(980px, 100%);
+  width: min(1180px, 100%);
+  min-height: 78vh;
   background: rgba(255, 255, 255, 0.32);
   border: 1px solid rgba(0, 0, 0, 0.05);
   border-radius: 18px;
   box-shadow: 0 12px 30px rgba(20, 25, 35, 0.08);
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .wayfarer-header {
@@ -113,6 +116,7 @@ button, select, textarea {
   display: grid;
   grid-template-columns: 0.95fr 1.4fr;
   background: rgba(255, 255, 255, 0.18);
+  flex: 1;
 }
 
 .list-panel {
@@ -367,6 +371,10 @@ button, select, textarea {
 
 .error-state {
   color: #bf3d3d;
+}
+
+.success-state {
+  color: #137b52;
 }
 
 @media (max-width: 820px) {
