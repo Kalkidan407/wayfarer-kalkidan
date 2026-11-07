@@ -69,25 +69,71 @@ async function main() {
     });
   }
 
-  console.log('🎟️ Seeding Target Tour Slots...');
-  // Create a highly loaded slot with 9 out of 10 seats taken for our concurrent test
-  await prisma.tourSlot.create({
-    data: {
+  console.log('🎟️ Seeding tour slots for multiple places...');
+
+  const slotSeeds = [
+    {
       placeId: museum.id,
       startsAt: new Date('2026-11-07T09:00:00Z'),
       capacity: 10,
-      bookings: {
-        createMany: {
-          data: [
-            { userId: user1.id, seats: 4 },
-            { userId: user2.id, seats: 5 } // 9 total taken, exactly 1 remaining!
-          ]
-        }
-      }
+      bookings: [
+        { userId: user1.id, seats: 4 },
+        { userId: user2.id, seats: 5 }
+      ]
+    },
+    {
+      placeId: museum.id,
+      startsAt: new Date('2026-11-07T13:30:00Z'),
+      capacity: 12,
+      bookings: [
+        { userId: user3.id, seats: 2 }
+      ]
+    },
+    {
+      placeId: newCafe.id,
+      startsAt: new Date('2026-11-07T08:00:00Z'),
+      capacity: 8,
+      bookings: [
+        { userId: user1.id, seats: 2 },
+        { userId: user3.id, seats: 3 }
+      ]
+    },
+    {
+      placeId: newCafe.id,
+      startsAt: new Date('2026-11-07T17:30:00Z'),
+      capacity: 10,
+      bookings: []
+    },
+    {
+      placeId: entoto.id,
+      startsAt: new Date('2026-11-08T07:15:00Z'),
+      capacity: 14,
+      bookings: [
+        { userId: user2.id, seats: 2 }
+      ]
+    },
+    {
+      placeId: entoto.id,
+      startsAt: new Date('2026-11-08T10:00:00Z'),
+      capacity: 16,
+      bookings: []
     }
-  });
+  ];
 
-  console.log('✅ Seeding complete! 10 places established.');
+  for (const slot of slotSeeds) {
+    await prisma.tourSlot.create({
+      data: {
+        placeId: slot.placeId,
+        startsAt: slot.startsAt,
+        capacity: slot.capacity,
+        bookings: slot.bookings.length
+          ? { createMany: { data: slot.bookings } }
+          : undefined
+      }
+    });
+  }
+
+  console.log('✅ Seeding complete! 10 places and multiple tour slots established.');
 }
 
 main()

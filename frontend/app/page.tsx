@@ -37,6 +37,7 @@ type SelectedPlaceDetails = Place & {
 };
 
 const categoryOptions = ['all', 'History', 'Food', 'Nature'] as const;
+const API_BASE_URL = 'http://localhost:3001';
 
 export default function Home() {
   const [users, setUsers] = useState<User[]>([]);
@@ -60,7 +61,7 @@ export default function Home() {
   useEffect(() => {
     async function loadUsers() {
       try {
-        const res = await fetch('http://localhost:3000/users');
+        const res = await fetch(`${API_BASE_URL}/users`);
         if (!res.ok) throw new Error('Unable to load users');
         const data = (await res.json()) as User[];
         setUsers(data);
@@ -81,7 +82,7 @@ export default function Home() {
       setLoading(true);
 
       try {
-        const url = new URL('http://localhost:3000/places');
+        const url = new URL(`${API_BASE_URL}/places`);
         if (selectedCategory !== 'all') {
           url.searchParams.set('category', selectedCategory);
         }
@@ -104,7 +105,7 @@ export default function Home() {
     }
 
     loadPlaces();
-  }, [selectedCategory, users]);
+  }, [selectedCategory, selectedPlaceId, users]);
 
   useEffect(() => {
     async function loadSelectedPlace() {
@@ -114,7 +115,7 @@ export default function Home() {
       }
 
       try {
-        const res = await fetch(`http://localhost:3000/places/${selectedPlaceId}`);
+        const res = await fetch(`${API_BASE_URL}/places/${selectedPlaceId}`);
         if (!res.ok) throw new Error('Unable to load selected place');
         const data = (await res.json()) as SelectedPlaceDetails;
         setSelectedPlace(data);
@@ -135,7 +136,7 @@ export default function Home() {
       }
 
       try {
-        const res = await fetch(`http://localhost:3000/reviews?placeId=${selectedPlaceId}`);
+        const res = await fetch(`${API_BASE_URL}/reviews?placeId=${selectedPlaceId}`);
         if (!res.ok) throw new Error('Unable to load reviews');
         const data = (await res.json()) as Review[];
         setReviews(data);
@@ -148,21 +149,25 @@ export default function Home() {
   }, [selectedPlaceId]);
 
   useEffect(() => {
-    if (!activeUser || !selectedPlaceId) {
-      setNewRating(0);
-      setNewReview('');
-      return;
+    async function syncReviewDraft() {
+      if (!activeUser || !selectedPlaceId) {
+        setNewRating(0);
+        setNewReview('');
+        return;
+      }
+
+      const userReview = reviews.find((review) => review.user.id === activeUser.id);
+
+      if (userReview) {
+        setNewRating(userReview.rating);
+        setNewReview(userReview.body);
+      } else {
+        setNewRating(0);
+        setNewReview('');
+      }
     }
 
-    const userReview = reviews.find((review) => review.user.id === activeUser.id);
-
-    if (userReview) {
-      setNewRating(userReview.rating);
-      setNewReview(userReview.body);
-    } else {
-      setNewRating(0);
-      setNewReview('');
-    }
+    void syncReviewDraft();
   }, [activeUser, selectedPlaceId, reviews]);
 
   const selectedPlaceSummary = useMemo(
@@ -182,7 +187,7 @@ export default function Home() {
     if (!selectedPlaceSummary || !activeUser || !newRating || !newReview.trim()) return;
 
     try {
-      const response = await fetch('http://localhost:3000/reviews', {
+      const response = await fetch(`${API_BASE_URL}/reviews`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -203,7 +208,7 @@ export default function Home() {
       setError(null);
       setBookingMessage(null);
 
-      const reviewRes = await fetch(`http://localhost:3000/reviews?placeId=${selectedPlaceSummary.id}`);
+      const reviewRes = await fetch(`${API_BASE_URL}/reviews?placeId=${selectedPlaceSummary.id}`);
       const reviewData = (await reviewRes.json()) as Review[];
       setReviews(reviewData);
     } catch (err) {
@@ -216,7 +221,7 @@ export default function Home() {
     if (!activeUser) return;
 
     try {
-      const response = await fetch('http://localhost:3000/bookings', {
+      const response = await fetch(`${API_BASE_URL}/bookings`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -237,7 +242,7 @@ export default function Home() {
       setBookingMessage(`${data.message || 'Booking confirmed'} for ${activeUser.name}.`);
       setError(null);
 
-      const updatedPlace = await fetch(`http://localhost:3000/places/${selectedPlaceId}`);
+      const updatedPlace = await fetch(`${API_BASE_URL}/places/${selectedPlaceId}`);
       const updatedPlaceData = (await updatedPlace.json()) as SelectedPlaceDetails;
       setSelectedPlace(updatedPlaceData);
     } catch (err) {
