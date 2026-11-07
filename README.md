@@ -12,3 +12,7 @@ Full-stack application containing data-safe tour booking and honest algorithmic 
 
 ### Launch Server
 Run `npm run start:dev` to turn on the local NestJS server.
+
+## Screenshot
+
+![Wayfarer app screenshot](frontend/public/screenshot.jpg)
