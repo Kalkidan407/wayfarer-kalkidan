@@ -16,14 +16,14 @@ Full-stack app for exploring places, booking tours, and viewing honest ranking d
    ```bash
    cd backend
    npx prisma migrate dev --name init
-   npm run seed
+   npx ts-node prisma/seed.ts
    ```
 
 3. Start the apps in separate terminals:
 
    ```bash
    cd backend && npm run start:dev
-   cd ../frontend && npm run dev
+   cd frontend && npm run dev
    ```
 
    - Frontend: http://localhost:3000
