@@ -8,7 +8,7 @@ Full-stack app for exploring places, booking tours, and viewing honest ranking d
 
    ```bash
    cd backend && npm install
-   cd ../frontend && npm install
+   cd frontend && npm install
    ```
 
 2. Create the SQLite database and seed demo data:
