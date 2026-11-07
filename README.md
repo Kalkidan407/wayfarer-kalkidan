@@ -1,17 +1,36 @@
-# Wayfarer Backend App
+# Wayfarer
 
-Full-stack application containing data-safe tour booking and honest algorithmic place rankings.
+Full-stack app for exploring places, booking tours, and viewing honest ranking data.
 
-### Setup Instructions
-1. Run `npm install` to load all packages.
-2. Run `npx prisma migrate dev --name init` to generate the SQLite file.
-3. Run `npx ts-node prisma/seed.ts` to populate user records.
+## 3-step setup
 
-> To see the database table run `npx prisma studio`
-> To run the tests use `npm run test:wayfarer`
+1. Install the dependencies for both apps:
 
-### Launch Server
-Run `npm run start:dev` to turn on the local NestJS server.
+   ```bash
+   cd backend && npm install
+   cd ../frontend && npm install
+   ```
+
+2. Create the SQLite database and seed demo data:
+
+   ```bash
+   cd backend
+   npx prisma migrate dev --name init
+   npm run seed
+   ```
+
+3. Start the apps in separate terminals:
+
+   ```bash
+   cd backend && npm run start:dev
+   cd ../frontend && npm run dev
+   ```
+
+   - Frontend: http://localhost:3000
+   - Backend API: http://localhost:3001
+   - API docs: http://localhost:3001/docs
+
+> Optional: use `npx prisma studio` to inspect the SQLite database, or `npm run test:wayfarer` to run the project tests.
 
 ## Screenshot
 
