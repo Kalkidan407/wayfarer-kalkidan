@@ -1,4 +1,5 @@
-# AI Usage Disclosure
+# AI Usage 
+- I ask AI when I get stak, don't know how to do things.
 
 ### 1. Tools Utilized
  I use AI, AI chatgpy for the script test , seed.ts file  and for the top ranking mathematic calculation.
